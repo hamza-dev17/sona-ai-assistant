@@ -61,11 +61,13 @@ I wanted to build something that mixes AI, UI, and basic systems work instead of
 
 ### Screenshots
 
-Add screenshots here later if you want:
+The screenshots are in the repo now, so I linked them directly here:
 
-- `docs/screenshots/boot-sequence.png`
-- `docs/screenshots/main-hud.png`
-- `docs/screenshots/analytics-dashboard.png`
+![SONA screenshot 1](Screenshots/1.png)
+
+![SONA screenshot 2](Screenshots/2.png)
+
+![SONA screenshot 3](Screenshots/3.png)
 
 ## Project Structure
 
