@@ -2,61 +2,70 @@
 
 ## Overview
 
-SONA is a cinematic, voice-enabled personal AI assistant prototype designed to feel like a premium operating interface rather than a basic chatbot demo. It combines an immersive browser-based holographic HUD, a themed terminal boot sequence, real-time voice interaction, and optional local text-to-speech infrastructure to showcase product thinking, UX ambition, and practical AI integration in a single portfolio project.
+SONA is a personal AI assistant project that combines voice interaction, a browser-based web interface, and a text-to-speech pipeline. The main idea is simple: you start it from the terminal, the web UI opens locally, and then you can interact with it through voice or text.
 
-The project exists as a recruiter-facing demonstration of how software engineering, interaction design, and AI-adjacent systems can be brought together into a polished end-to-end experience.
+For speech output, the project can use ElevenLabs when that is enabled, fall back to `edge-tts`, and optionally use a local ONNX-based Kokoro service if you want to run speech generation locally. I built this project mostly to learn how these parts fit together in one system and to experiment with building a more complete assistant instead of just another chatbot demo.
 
-## Key Features
+## What This Project Demonstrates
 
-- Cinematic terminal boot flow with identity verification and themed system prompts
-- Browser-based holographic health dashboard with animated telemetry and diagnostics views
-- Wake-word-driven voice interaction powered by the browser speech recognition stack
-- Dynamic text-to-speech pipeline with configurable ElevenLabs support and local `edge-tts` fallback
-- Optional local Kokoro ONNX speech service for self-hosted TTS experimentation
-- Multi-panel interface including biometric HUD, analytics dashboard, animated particle systems, and 3D visualizations
+- Connecting a frontend and backend in one local project
+- Handling voice input and voice output
+- Using fallback logic so the app still works when one service is unavailable
+- Organizing a project with source code, public assets, scripts, and docs
+- Working with browser APIs, Python, and local model-based TTS
+
+## Features
+
+- Browser-based dashboard with multiple panels and animated UI elements
+- Voice input using the browser speech recognition API
+- Typed input support for commands in the web interface
+- Local `/api/tts` endpoint for assistant speech output
+- ElevenLabs support when an API key is provided
+- `edge-tts` fallback when ElevenLabs is disabled or unavailable
+- Optional Kokoro ONNX service for local speech synthesis
+- Local Python server that serves the UI and handles TTS requests
+- Separate analytics page for a second interface view
 
 ## System Architecture
 
-SONA follows a lightweight local architecture:
+SONA follows a simple flow:
 
-`User Input -> Terminal Boot / Browser Voice Input -> Processing Layer -> TTS / UI Response -> Visual + Audio Output`
+`Input -> Processing -> Output`
 
-### Breakdown
+### Input
 
-- `Input`
-  - Terminal prompts collect the initial identity and calibration flow
-  - Browser microphone input captures spoken commands
-  - Manual text input supports typed interactions in the UI
-- `Processing`
-  - Python launcher serves the frontend and handles the local `/api/tts` endpoint
-  - Frontend JavaScript manages wake-word detection, interaction flow, holographic rendering, and state transitions
-  - Optional Kokoro service provides a separate local speech generation endpoint
-- `Decision`
-  - TTS engine selection is based on environment configuration
-  - Browser-side logic decides when to listen, speak, animate, or switch panels
-- `Output`
-  - Spoken assistant responses
-  - Animated diagnostics dashboards
-  - Real-time console-style and holographic interface feedback
+The user starts the app from the terminal and interacts with the browser UI using either voice or text.
 
-### Model Assets
+### Processing
 
-The Kokoro ONNX model is intentionally kept out of the GitHub repository because the file is larger than GitHub's 100 MB limit. If you want to run the optional local Kokoro service, place the model file in `models/kokoro-v0_19.onnx` on your machine.
+The Python backend serves the frontend and handles TTS requests. The browser side listens for wake words, sends commands, and updates the UI.
 
-## Tech Stack
+### Output
 
-- Python 3.11+
-- FastAPI
-- Uvicorn
-- `edge-tts`
-- `kokoro-onnx`
-- `python-dotenv`
-- HTML5
-- CSS3
-- Vanilla JavaScript
-- Three.js
-- GSAP
-- ONNX model assets for local speech synthesis
+The system responds with spoken audio and visual updates in the web interface.
+
+## Why This Project
+
+I wanted to build something that mixes AI, UI, and basic systems work instead of only making a chatbot. A big part of the project was trying out interaction design, local server setup, and different speech pipelines in one place. It was also a good way to practice structuring a real project in a way that is easier to understand and present.
+
+## Demo
+
+### Example Flow
+
+1. Run the project from the terminal.
+2. Complete the startup prompts.
+3. The browser interface opens locally.
+4. Click the start button in the web UI.
+5. Use voice or text to interact with SONA.
+6. Open the analytics page to see the secondary dashboard view.
+
+### Screenshots
+
+Add screenshots here later if you want:
+
+- `docs/screenshots/boot-sequence.png`
+- `docs/screenshots/main-hud.png`
+- `docs/screenshots/analytics-dashboard.png`
 
 ## Project Structure
 
@@ -92,25 +101,6 @@ sona-ai-assistant/
 └── requirements.txt
 ```
 
-## Demo
-
-### Example Experience
-
-1. Launch SONA from the terminal
-2. Complete the themed biometric boot flow
-3. The local browser HUD opens automatically
-4. Click `ENGAGE S.O.N.A. DIAGNOSTICS`
-5. Interact by voice or by typing commands into the interface
-6. Navigate to the analytics dashboard for the secondary telemetry view
-
-### Screenshots
-
-Add screenshots to a future `docs/screenshots/` folder and reference them here:
-
-- `docs/screenshots/boot-sequence.png`
-- `docs/screenshots/main-hud.png`
-- `docs/screenshots/analytics-dashboard.png`
-
 ## Installation
 
 ### 1. Clone the repository
@@ -129,7 +119,7 @@ python -m venv .venv
 On Windows:
 
 ```bash
-.venv\\Scripts\\activate
+.venv\Scripts\activate
 ```
 
 On macOS/Linux:
@@ -150,55 +140,59 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Set:
+Set these values if needed:
 
-- `USE_ELEVENLABS=true` only if you want ElevenLabs as the preferred TTS provider
-- `ELEVENLABS_API_KEY=...` if using ElevenLabs
+- `USE_ELEVENLABS=true` if you want ElevenLabs to be used first
+- `ELEVENLABS_API_KEY=...` if you have an ElevenLabs API key
+- `SONA_DISABLE_BROWSER=true` if you do not want the browser to open automatically
 
-If you want to suppress automatic browser launch during development or tests:
+If you want to use the optional Kokoro service, place the ONNX model at:
 
-- `SONA_DISABLE_BROWSER=true`
+```text
+models/kokoro-v0_19.onnx
+```
 
 ## Usage
 
-### Run the main SONA experience
+### Run the main app
 
 ```bash
 python scripts/run_sona.py
 ```
 
-### Run the optional Kokoro TTS service
+### Run the optional Kokoro service
 
 ```bash
 python scripts/run_kokoro_service.py
 ```
 
-The Kokoro service starts at:
+The Kokoro service runs at:
 
 ```text
 http://127.0.0.1:8880/v1/audio/speech
 ```
 
-## Notes for Recruiters and Reviewers
+## Notes for Recruiters
 
-- This project is intentionally presentation-heavy: it demonstrates engineering polish, local tooling, AI system integration, and interactive product design in one artifact.
-- The repository has been cleaned to avoid committing local secrets, temporary files, and generated debug output.
-- The codebase is structured to separate runtime logic, static assets, model assets, and documentation for easier maintenance.
+- This is a local full-stack project, not just a UI mockup.
+- It shows how I connected frontend interaction, Python backend logic, and TTS fallback handling.
+- The project structure is separated into source code, public assets, scripts, and docs so it is easier to read and maintain.
+- The large ONNX model is kept out of GitHub because of file size limits, but the project still documents how to use it locally.
 
 ## Future Improvements
 
-- Replace hardcoded demo data with live health or wearable integrations
-- Introduce structured intent handling for more deterministic assistant behavior
-- Add automated tests around configuration loading and TTS fallback behavior
-- Containerize the optional local services for easier onboarding
-- Add CI checks for linting, startup validation, and dependency health
+- Add tests for the backend routes and configuration loading
+- Replace the remaining demo data with real stored user data
+- Add a cleaner intent parser for voice commands
+- Package the optional TTS service in a more repeatable way
+- Add deployment instructions for running the app on another machine
 
 ## Security
 
-- Do not commit `.env` files or provider API keys
-- Keep local model assets and third-party service credentials under explicit developer control
-- Review any future telemetry integrations carefully before exposing real user health data
+- Do not commit `.env` files or API keys
+- Keep model files and other large local assets out of public history unless you use Git LFS
+- Review any future integrations carefully before adding real user data
 
 ## License
 
-Add a license before public release if you want others to reuse or adapt the project.
+Add a license if you want other people to reuse or adapt the project.
