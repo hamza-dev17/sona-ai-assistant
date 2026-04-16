@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.O.N.A // HARDWARE ANALYTICS V2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #010305;
+            --primary: #00e5ff;
+            --alert: #ff2a55;
+            --text-main: #e0faff;
+            --grid-line: rgba(0, 229, 255, 0.1);
+            --neon-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', monospace;
+            height: calc(100vh - 40px);
+            /* Account for 20px padding top/bottom */
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 350px 1fr 380px;
+            grid-template-rows: 80px 1fr;
+            gap: 20px;
+            padding: 20px;
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 5, 10, 0.25) 50%), linear-gradient(90deg, rgba(0, 255, 255, 0.03), rgba(0, 100, 255, 0.03));
+            z-index: 50;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            border-bottom: 2px solid var(--primary);
+            background: rgba(0, 15, 25, 0.9);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+            z-index: 10;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            color: var(--primary);
+            letter-spacing: 4px;
+        }
+
+        .header-warning {
+            color: var(--alert);
+            animation: blink 2s infinite;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            color: var(--primary);
+            text-decoration: none;
+            border: 1px solid var(--primary);
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 100;
+            cursor: pointer;
+        }
+
+        .back-btn:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: var(--neon-shadow);
+        }
+
+        .panel {
+            background: rgba(0, 10, 15, 0.85);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+            /* Prevent clipping pseudoelements */
+            min-height: 0;
+            /* Prevents grid stretching when flex children overflow */
+            z-index: 5;
+            backdrop-filter: blur(4px);
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.05);
+            position: relative;
+        }
+
+        /* Glowing Corner Brackets instead of full frames */
+        .panel::before,
+        .panel::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid var(--primary);
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        /* Top-Left Bracket */
+        .panel::before {
+            top: -1px;
+            left: -1px;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 12px 0 0 0;
+            box-shadow: -2px -2px 8px rgba(0, 229, 255, 0.4);
+        }
+
+        /* Bottom-Right Bracket */
+        .panel::after {
+            bottom: -1px;
+            right: -1px;
+            border-left: none;
+            border-top: none;
+            border-radius: 0 0 12px 0;
+            box-shadow: 2px 2px 8px rgba(0, 229, 255, 0.4);
+        }
+
+        .panel:hover {
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.15);
+        }
+
+        .panel:hover::before,
+        .panel:hover::after {
+            width: 25px;
+            height: 25px;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            color: var(--primary);
+            border-bottom: 1px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* BT Hex Log + Decryption */
+        .hex-stream {
+            height: 120px;
+            font-size: 0.8rem;
+            color: #55aaff;
+            overflow-y: auto;
+            text-shadow: 0 0 5px rgba(0, 229, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 15, 25, 0.6);
+            border: 1px solid var(--grid-line);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .hex-stream::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .hex-stream::-webkit-scrollbar-thumb {
+            background: var(--primary);
+        }
+
+        .hex-line {
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .hex-decrypted {
+            color: var(--alert);
+            text-shadow: 0 0 10px var(--alert);
+            font-weight: bold;
+            background: rgba(255, 42, 85, 0.1);
+            padding: 2px;
+        }
+
+        /* 3D Watch Center */
+        .schematic-col {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webgl-watch {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .overlay-text {
+            position: absolute;
+            color: var(--primary);
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            z-index: 2;
+            text-shadow: var(--neon-shadow);
+            animation: blink 3s infinite;
+            pointer-events: none;
+        }
+
+        /* Radar GPS */
+        .radar-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            border-radius: 50%;
+            /* Ensuring radar retains its circle shape inside the curved panel */
+            overflow: hidden;
+            background:
+                linear-gradient(rgba(0, 229, 255, 0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.2) 1px, transparent 1px),
+                radial-gradient(circle, rgba(0, 229, 255, 0.15) 0%, rgba(0, 10, 15, 0.9) 70%);
+            background-size: 20px 20px, 20px 20px, 100% 100%;
+            background-position: center;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.2);
+        }
+
+        .radar-sweep {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary));
+            box-shadow: 0 0 15px 5px rgba(0, 229, 255, 0.3);
+            transform-origin: 0% 50%;
+            animation: radarSpin 4s linear infinite;
+        }
+
+        .gps-coords {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 0.7rem;
+            color: var(--primary);
+            text-shadow: 0 0 5px var(--primary);
+            pointer-events: none;
+        }
+
+        .radar-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--alert);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--alert);
+            opacity: 0;
+        }
+
+        .radar-grid-line {
+            position: absolute;
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Hoverable Interactive Charts Canvas */
+        .chart-container {
+            width: 100%;
+            height: 120px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        canvas.chart {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(0, 229, 255, 0.9);
+            color: #000;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            display: none;
+            pointer-events: none;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        /* Bottom Stats */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed rgba(0, 229, 255, 0.2);
+            padding-bottom: 5px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        @keyframes radarSpin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes orbitSpin {
+            0% {
+                transform: rotateX(70deg) rotateZ(0deg);
+            }
+
+            100% {
+                transform: rotateX(70deg) rotateZ(360deg);
+            }
+        }
+
+        .orbit-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 320px;
+            height: 320px;
+            margin-left: -160px;
+            margin-top: -160px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .orbit-ring.r1 {
+            animation: orbitSpin 12s linear infinite;
+            border-top: 3px solid var(--primary);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+        }
+
+        .orbit-ring.r2 {
+            width: 400px;
+            height: 400px;
+            margin-left: -200px;
+            margin-top: -200px;
+            animation: orbitSpin 18s linear reverse infinite;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        @keyframes bodyGlitch {
+            0% {
+                filter: hue-rotate(90deg) contrast(200%) invert(10%);
+                transform: scale(1.02);
+            }
+
+            50% {
+                filter: hue-rotate(-90deg) contrast(150%) invert(5%);
+                transform: translateX(-10px);
+            }
+
+            100% {
+                filter: none;
+                transform: none;
+            }
+        }
+
+        /* --- SONA Insight Panel --- */
+        .sona-insight-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 15, 25, 0.85);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .insight-header {
+            font-size: 0.8rem;
+            color: var(--primary);
+            opacity: 0.8;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insight-text {
+            font-size: 1rem;
+            color: #fff;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            min-height: 48px;
+            /* space for roughly 2 lines */
+        }
+
+        .typewriter::after {
+            content: '|';
+            animation: blink 1s step-end infinite;
+        }
+
+        /* --- Data Flow Pipeline SVG --- */
+        .data-flow-svg {
+            position: absolute;
+            top: 0;
+            left: -20px;
+            width: calc(100% + 40px);
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .flow-line {
+            fill: none;
+            stroke: rgba(0, 229, 255, 0.15);
+            stroke-width: 1px;
+        }
+
+        .flow-pulse {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 1.5px;
+            stroke-dasharray: 15 100;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 4px var(--primary));
+        }
+
+        .pulse-1 {
+            animation: pulseOut 3s linear infinite;
+        }
+
+        .pulse-2 {
+            animation: pulseOut 2.5s linear infinite 1s;
+        }
+
+        .pulse-3 {
+            animation: pulseOut 4s linear infinite 0.5s;
+        }
+
+        .pulse-4 {
+            animation: pulseOut 3.5s linear infinite 1.5s;
+        }
+
+        @keyframes pulseOut {
+            0% {
+                stroke-dashoffset: 0;
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            80% {
+                opacity: 1;
+            }
+
+            100% {
+                stroke-dashoffset: -100;
+                opacity: 0;
+            }
+        }
+
+        body {
+            animation: bodyGlitch 0.6s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-title">APPLE WATCH // HARDWARE ANALYTICS</div>
+        <div class="header-warning">LIVE NEURAL SYNC ACTIVE</div>
+        <a href="#" id="back-btn" class="back-btn">RETURN TO S.O.N.A MAIN</a>
+    </div>
+
+    <!-- Left: Data & GPS -->
+    <div class="panel">
+        <div class="panel-title">GEOLOCATION TRACKING (LIVE)</div>
+        <div class="radar-container" id="radar-ui">
+            <div class="radar-grid-line" style="width: 50%; height: 50%;"></div>
+            <div class="radar-grid-line" style="width: 80%; height: 80%;"></div>
+            <div class="radar-sweep"></div>
+            <div class="gps-coords" id="gps-coords">LAT: 37.7749 // LNG: -122.4194</div>
+        </div>
+
+        <div class="panel-title" style="margin-top:auto;">RAW DATA STREAM</div>
+        <div class="hex-stream" id="hex-stream"></div>
+    </div>
+
+    <!-- Center: 3D Holographic Watch & Intelligence Panel -->
+    <div class="panel schematic-col"
+        style="position:relative; display:flex; justify-content:center; align-items:center;">
+
+        <!-- Data Flow Lines behind Hologram -->
+        <svg class="data-flow-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <!-- Left flows -->
+            <path class="flow-line" d="M 50 50 Q 25 50 0 20" />
+            <path class="flow-line" d="M 50 50 Q 25 50 0 80" />
+            <!-- Right flows -->
+            <path class="flow-line" d="M 50 50 Q 75 50 100 30" />
+            <path class="flow-line" d="M 50 50 Q 75 50 100 70" />
+
+            <!-- Animated Pulses tracing the paths outwards -->
+            <path class="flow-pulse pulse-1" d="M 50 50 Q 25 50 0 20" pathLength="100" />
+            <path class="flow-pulse pulse-2" d="M 50 50 Q 25 50 0 80" pathLength="100" />
+            <path class="flow-pulse pulse-3" d="M 50 50 Q 75 50 100 30" pathLength="100" />
+            <path class="flow-pulse pulse-4" d="M 50 50 Q 75 50 100 70" pathLength="100" />
+        </svg>
+
+        <div class="orbit-ring r1"></div>
+        <div class="orbit-ring r2"></div>
+        <!-- Align Watch above the bottom Insight panel -->
+        <div id="webgl-watch" style="z-index: 5; height: 75%; align-self: flex-start;"></div>
+        <div class="overlay-text" style="top: 35%;">LIVE NEURAL SYNC</div>
+
+        <!-- S.O.N.A Intelligence Interface -->
+        <div class="sona-insight-panel">
+            <div class="insight-header">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                S.O.N.A. INTELLIGENCE ENGINE
+            </div>
+            <div class="insight-text typewriter" id="sona-insight-text">SYNCHRONIZING SECURE BIOMETRIC UPLINK...</div>
+        </div>
+    </div>
+
+    <!-- Right: Interactive Canvas Charts & Stats -->
+    <div class="panel">
+        <div class="panel-title">METRICS AGGREGATE</div>
+        <div class="stat-row">
+            <span>AVG HRV:</span><span style="color: var(--alert);" id="stat-hrv">42 ms</span>
+        </div>
+        <div class="stat-row">
+            <span>RESTING HR:</span><span style="color: var(--primary);" id="stat-rhr">64 BPM</span>
+        </div>
+        <div class="stat-row" style="margin-bottom: 20px;">
+            <span>CALORIC BURN:</span><span style="color: var(--primary);" id="stat-cal">2,104 KCAL</span>
+        </div>
+
+        <div class="panel-title">SLEEP ARCHITECTURE (HOVER TO INSPECT)</div>
+        <div class="chart-container">
+            <canvas class="chart" id="sleep-canvas"></canvas>
+            <div class="chart-tooltip" id="sleep-tip"></div>
+        </div>
+
+        <div class="panel-title">O2 SATURATION TREND</div>
+        <div class="chart-container" style="height: 100px;">
+            <canvas class="chart" id="o2-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 0. Extract Name and Apply to Back Button
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientName = urlParams.get('name') || "UNKNOWN PATIENT";
+        const backBtn = document.getElementById("back-btn");
+        if (backBtn) {
+            const targetUrl = patientName !== "UNKNOWN PATIENT"
+                ? `index.html?name=${encodeURIComponent(patientName)}&skip_intro=true`
+                : "index.html?skip_intro=true";
+
+            backBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Speak handoff line using the local speakSona function
+                if (typeof speakSona === 'function') {
+                    speakSona(`Returning to main interface. Systems synchronized.`, () => {
+                        window.location.href = targetUrl;
+                    });
+                } else {
+                    window.location.href = targetUrl;
+                }
+            });
+        }
+
+
+        // 2. MATRIX HEX DECRYPTION STREAM
+        const hexContainer = document.getElementById("hex-stream");
+        const decryptions = [
+            "[DECRYPTED] ARTERIAL PRESSURE SPIKE DETECTED",
+            "[DECRYPTED] REM SLEEP CYCLE INTERRUPTED",
+            "[DECRYPTED] CORTISOL LEVELS ELEVATED",
+            "[DECRYPTED] SYNCING ACCELEROMETER DATA",
+            "[DECRYPTED] ABNORMAL HRV DETECTED"
+        ];
+
+        function generateHexLine() {
+            let line = "";
+            for (let i = 0; i < 6; i++) {
+                line += Math.floor(Math.random() * 65535).toString(16).toUpperCase().padStart(4, '0') + " ";
+            }
+            return "[RX] 0X" + line;
+        }
+
+        setInterval(() => {
+            const div = document.createElement("div");
+            div.className = "hex-line";
+
+            // Randomly "Decrypt" a line
+            if (Math.random() > 0.92) {
+                div.className = "hex-line hex-decrypted";
+                div.innerText = decryptions[Math.floor(Math.random() * decryptions.length)];
+            } else {
+                div.innerText = generateHexLine();
+            }
+
+            hexContainer.appendChild(div);
+            if (hexContainer.children.length > 25) {
+                hexContainer.removeChild(hexContainer.firstChild);
+            }
+        }, 120);
+
+        // 3. LIVE GPS RADAR
+        const radarUI = document.getElementById("radar-ui");
+        setInterval(() => {
+            if (Math.random() > 0.4) {
+                const dot = document.createElement("div");
+                dot.className = "radar-dot";
+                dot.style.left = (20 + Math.random() * 60) + "%";
+                dot.style.top = (20 + Math.random() * 60) + "%";
+                radarUI.appendChild(dot);
+
+                // Ping fade effect
+                dot.animate([{ opacity: 1, transform: 'scale(1.5)' }, { opacity: 0, transform: 'scale(1)' }], { duration: 1500, easing: 'ease-out' });
+                setTimeout(() => dot.remove(), 1500);
+            }
+        }, 800);
+
+        // 4. INTERACTIVE CANVAS CHARTS
+        function initSleepChart() {
+            const cvs = document.getElementById("sleep-canvas");
+            const ctx = cvs.getContext("2d");
+            const tip = document.getElementById("sleep-tip");
+
+            const rect = cvs.parentElement.getBoundingClientRect();
+            cvs.width = rect.width; cvs.height = rect.height;
+
+            const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+            const data = [6.2, 7.5, 4.1, 5.8, 8.2, 6.0, 7.1]; // Hours
+            const barW = cvs.width / (days.length - 1); // Space between nodes
+
+            function drawChart(hoverIdx = -1) {
+                ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+                // Draw Gradient Area fill under curve
+                ctx.beginPath();
+                ctx.moveTo(0, cvs.height);
+                for (let i = 0; i < data.length; i++) {
+                    const h = (data[i] / 10) * cvs.height * 0.8; // Scale to 80% height Max
+                    const x = i * barW;
+                    const y = cvs.height - h;
+                    ctx.lineTo(x, y);
+                }
+                ctx.lineTo(cvs.width, cvs.height);
+                ctx.closePath();
+
+                let gradient = ctx.createLinearGradient(0, 0, 0, cvs.height);
+                gradient.addColorStop(0, "rgba(0, 229, 255, 0.4)");
+                gradient.addColorStop(1, "rgba(0, 229, 255, 0.0)");
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Draw Glowing Line Curve
+                ctx.beginPath();
+                for (let i = 0; i < data.length; i++) {
+                    const h = (data[i] / 10) * cvs.height * 0.8;
+                    const x = i * barW;
+                    const y = cvs.height - h;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = "#00e5ff";
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "#00e5ff";
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+
+                // Draw Nodes
+                ctx.shadowBlur = 0; // Reset shadow for clean nodes
+                for (let i = 0; i < data.length; i++) {
+                    const h = (data[i] / 10) * cvs.height * 0.8;
+                    const x = i * barW;
+                    const y = cvs.height - h;
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = (i === hoverIdx) ? "#fff" : "#005577";
+                    ctx.fill();
+                    ctx.strokeStyle = "#00e5ff";
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+
+            cvs.addEventListener("mousemove", (e) => {
+                const rect = cvs.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                // Find closest node index
+                let closestIdx = 0;
+                let minDist = Infinity;
+                for (let i = 0; i < data.length; i++) {
+                    const x = i * barW;
+                    const dist = Math.abs(x - mx);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestIdx = i;
+                    }
+                }
+
+                if (minDist < 30) {
+                    drawChart(closestIdx);
+                    tip.style.display = 'block';
+                    tip.style.left = (e.clientX - rect.left + 10) + "px";
+                    tip.style.top = (e.clientY - rect.top - 20) + "px";
+                    tip.innerText = `${days[closestIdx]}: ${data[closestIdx]}h Sleep`;
+                } else {
+                    drawChart(-1);
+                    tip.style.display = 'none';
+                }
+            });
+            cvs.addEventListener("mouseleave", () => { drawChart(-1); tip.style.display = 'none'; });
+            drawChart();
+        }
+
+        function initO2Chart() {
+            const cvs = document.getElementById("o2-canvas");
+            const ctx = cvs.getContext("2d");
+            cvs.width = cvs.parentElement.getBoundingClientRect().width;
+            cvs.height = 100;
+
+            let phase = 0;
+            function drawO2Frame() {
+                requestAnimationFrame(drawO2Frame);
+                ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+                ctx.beginPath();
+                for (let x = 0; x < cvs.width; x += 2) {
+                    // Compose a wave with noise resembling O2 sat/EKG pulse
+                    const spike = (x % 140 > 130) ? (Math.random() * 40 - 20) : 0;
+                    const baseWave = Math.sin((x + phase) * 0.05) * 8;
+                    const y = (cvs.height * 0.5) + baseWave + spike + (Math.random() * 2 - 1);
+
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+
+                ctx.strokeStyle = "#00e5ff";
+                ctx.lineWidth = 3;
+                ctx.shadowColor = "rgba(0, 229, 255, 0.8)";
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+
+                phase += 4; // Shift wave leftward for scrolling effect
+            }
+            drawO2Frame();
+        }
+
+        setTimeout(() => { initSleepChart(); initO2Chart() }, 100);
+
+        // Scramble Stats
+        setInterval(() => {
+            document.getElementById("stat-hrv").innerText = (40 + Math.floor(Math.random() * 5)) + " ms";
+            document.getElementById("stat-rhr").innerText = (62 + Math.floor(Math.random() * 4)) + " BPM";
+            document.getElementById("stat-cal").innerText = (2100 + Math.floor(Math.random() * 15)) + " KCAL";
+        }, 2000);
+
+        // 5. 3D APPLE WATCH SCHEMATIC (THREE.JS)
+        function init3DWatch() {
+            const container = document.getElementById("webgl-watch");
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const watchGroup = new THREE.Group();
+
+            // Create a Rounded Rectangle Shape for the Watch Body
+            const width = 2.4;
+            const height = 3.0;
+            const radius = 0.6; // Corner roundness
+            const watchShape = new THREE.Shape();
+
+            watchShape.moveTo(-width / 2 + radius, height / 2);
+            watchShape.lineTo(width / 2 - radius, height / 2);
+            watchShape.absarc(width / 2 - radius, height / 2 - radius, radius, Math.PI / 2, 0, true);
+            watchShape.lineTo(width / 2, -height / 2 + radius);
+            watchShape.absarc(width / 2 - radius, -height / 2 + radius, radius, 0, -Math.PI / 2, true);
+            watchShape.lineTo(-width / 2 + radius, -height / 2);
+            watchShape.absarc(-width / 2 + radius, -height / 2 + radius, radius, -Math.PI / 2, Math.PI, true);
+            watchShape.lineTo(-width / 2, height / 2 - radius);
+            watchShape.absarc(-width / 2 + radius, height / 2 - radius, radius, Math.PI, Math.PI / 2, true);
+
+            const extrudeSettings = {
+                depth: 0.8,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 1,
+                bevelSize: 0.05,
+                bevelThickness: 0.05
+            };
+
+            // Watch Body (Stylized Rounded Extrusion)
+            const bodyGeo = new THREE.ExtrudeGeometry(watchShape, extrudeSettings);
+            bodyGeo.center(); // Center the geometry mathematically
+            const bodyMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, wireframe: true, transparent: true, opacity: 0.6 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            watchGroup.add(body);
+
+            // Watch Screen Glass
+            const screenSettings = {
+                depth: 0.85,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 1,
+                bevelSize: 0.02,
+                bevelThickness: 0.02
+            };
+            const screenGeo = new THREE.ExtrudeGeometry(watchShape, screenSettings);
+            screenGeo.center();
+            // Scale screen slightly smaller than the body footprint
+            screenGeo.scale(0.9, 0.92, 1);
+            const screenMat = new THREE.MeshBasicMaterial({ color: 0x005577, transparent: true, opacity: 0.2 });
+            const screen = new THREE.Mesh(screenGeo, screenMat);
+            watchGroup.add(screen);
+
+            // Digital Crown
+            const crownGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.4, 16);
+            const crownMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, wireframe: true }); // Removed red
+            const crown = new THREE.Mesh(crownGeo, crownMat);
+            crown.position.set(1.3, 0.8, 0);
+            crown.rotation.z = Math.PI / 2;
+            watchGroup.add(crown);
+
+            // Band attachments
+            const bandGeo = new THREE.BoxGeometry(1.8, 0.5, 0.4);
+            const bandTop = new THREE.Mesh(bandGeo, bodyMat);
+            bandTop.position.set(0, 1.7, -0.1);
+            watchGroup.add(bandTop);
+
+            const bandBot = new THREE.Mesh(bandGeo, bodyMat);
+            bandBot.position.set(0, -1.7, -0.1);
+            watchGroup.add(bandBot);
+
+            scene.add(watchGroup);
+            camera.position.z = 6;
+
+            // Mouse interaction
+            let mouseX = 0; let mouseY = 0;
+            document.addEventListener("mousemove", (e) => {
+                mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                // Slowly spin and follow mouse
+                watchGroup.rotation.y += 0.01;
+                watchGroup.rotation.x += (mouseY * 0.5 - watchGroup.rotation.x) * 0.05;
+                watchGroup.rotation.z += (mouseX * 0.5 - watchGroup.rotation.z) * 0.05;
+
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                initSleepChart(); // Redraw chart on resize
+            });
+        }
+
+        init3DWatch();
+
+        // ---- HUMAN TTS AUDIO LOGIC ----
+        let currentSonaAudio = null;
+        const ttsCache = new Map();
+
+        // Fallback to Web Speech API if API fails
+        function speakSonaFallback(phrase, onEndCallback = null) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                let voices = window.speechSynthesis.getVoices();
+                const utterance = new SpeechSynthesisUtterance(phrase);
+
+                const preferredVoice = voices.find(v => v.name.includes("Google UK English Female")) ||
+                    voices.find(v => v.name.includes("Microsoft Zira")) ||
+                    voices.find(v => v.name.includes("Samantha")) ||
+                    voices.find(v => v.name.includes("Online (Natural)") && v.lang.includes('en') && v.name.includes('Female')) ||
+                    voices.find(v => v.name.includes("Google US English")) ||
+                    voices.find(v => v.lang.includes('en') && v.name.includes('Female')) ||
+                    voices.find(v => v.lang === 'en-US');
+
+                if (preferredVoice) utterance.voice = preferredVoice;
+                utterance.pitch = 1.1;
+                utterance.rate = 0.95;
+
+                utterance.onend = () => {
+                    if (typeof onEndCallback === 'function') onEndCallback();
+                };
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                if (typeof onEndCallback === 'function') {
+                    // Slight delay to simulate reading if TTS is totally dead
+                    setTimeout(onEndCallback, phrase.length * 60);
+                }
+            }
+        }
+
+        // Main speak function using new Human TTS pipeline
+        function speakSona(phrase, onEndCallback = null) {
+            if (currentSonaAudio) {
+                currentSonaAudio.pause();
+                currentSonaAudio.currentTime = 0;
+            }
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+            // REQUIREMENT 2: Caching
+            if (ttsCache.has(phrase)) {
+                playHtmlAudio(ttsCache.get(phrase), phrase, onEndCallback);
+                return;
+            }
+
+            // REQUIREMENT 1: 5s Timeout Protection
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                controller.abort();
+            }, 5000);
+
+            fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: phrase }),
+                signal: controller.signal
+            })
+                .then(response => {
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error("TTS API missing or failed");
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    ttsCache.set(phrase, url);
+                    playHtmlAudio(url, phrase, onEndCallback);
+                })
+                .catch(err => {
+                    clearTimeout(timeoutId);
+                    speakSonaFallback(phrase, onEndCallback);
+                });
+        }
+
+        function playHtmlAudio(url, phrase, onEndCallback) {
+            currentSonaAudio = new Audio(url);
+
+            // REQUIREMENT 3: Dual-trigger safety
+            let audioFinished = false;
+            let fallbackTimeout = null;
+
+            const handleAudioEnd = () => {
+                if (audioFinished) return;
+                audioFinished = true;
+                window.isSonaSpeaking = false;
+                if (fallbackTimeout) clearTimeout(fallbackTimeout);
+                if (typeof onEndCallback === 'function') onEndCallback();
+            };
+
+            currentSonaAudio.onloadedmetadata = () => {
+                const durationMs = currentSonaAudio.duration * 1000;
+                if (isFinite(durationMs) && durationMs > 0) {
+                    fallbackTimeout = setTimeout(() => {
+                        handleAudioEnd();
+                    }, durationMs + 200); // 200ms safety buffer
+                }
+            };
+
+            currentSonaAudio.onended = handleAudioEnd;
+
+            currentSonaAudio.onerror = () => {
+                handleAudioEnd();
+                speakSonaFallback(phrase, onEndCallback);
+            };
+
+            window.isSonaSpeaking = true;
+
+            currentSonaAudio.play().catch(e => {
+                handleAudioEnd();
+                speakSonaFallback(phrase, onEndCallback);
+            });
+        }
+
+        // 6. S.O.N.A. INTELLIGENCE BEHAVIOR (Typewriter logic)
+        function getInsights() {
+            const hrv = parseInt(document.getElementById("stat-hrv").innerText) || 42;
+            const rhr = parseInt(document.getElementById("stat-rhr").innerText) || 64;
+            const cal = parseInt(document.getElementById("stat-cal").innerText) || 2104;
+
+            return [
+                hrv < 42 ? `HRV dropped to ${hrv} ms — below your 7-day average. Dial down today.` : `HRV steady at ${hrv} ms. Recovery's on track.`,
+                rhr > 65 ? `Resting heart rate nudged up to ${rhr} BPM. Worth noting.` : `Resting heart rate at ${rhr} BPM. Cardiovascular recovery looks clean.`,
+                `You've burned ${cal.toLocaleString()} calories today. Are you fueling enough?`,
+                `REM sleep was thin last night. That might explain the fog.`,
+                hrv < 40 ? `HRV at ${hrv} ms is compressed. Your nervous system needs a break — that's not a suggestion.` : `Autonomic balance looks healthy. Whatever your routine is right now, keep it.`,
+                `O2 dipped during deep sleep. Second time this week — I'm tracking it.`,
+                cal > 2200 ? `Caloric output is high at ${cal.toLocaleString()} KCAL. Don't run a deficit.` : `Energy expenditure is within baseline. Metabolic efficiency looks stable.`,
+                `Geofencing data synced. Environmental factors nominal.`
+            ];
+        }
+
+        let iIndex = 0;
+        const insightEl = document.getElementById("sona-insight-text");
+
+        function typeInsight(text, callback) {
+            insightEl.innerText = "";
+            let charIdx = 0;
+            const typeInterval = setInterval(() => {
+                insightEl.innerText += text.charAt(charIdx);
+                charIdx++;
+                if (charIdx === text.length) {
+                    clearInterval(typeInterval);
+                }
+            }, 35);
+        }
+
+        function cycleInsights() {
+            const insights = getInsights();
+            iIndex = (iIndex + 1) % insights.length;
+            const textToSpeak = insights[iIndex];
+
+            // Speak it aloud, and when speech ends, wait 5 seconds and cycle to the next
+            speakSona(textToSpeak, () => {
+                setTimeout(cycleInsights, 5000);
+            });
+
+            // Sync typing roughly with speech start
+            typeInsight(textToSpeak);
+        }
+
+        // Start cycling after the initial boot text
+        setTimeout(() => {
+            cycleInsights();
+        }, 3000);
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.O.N.A // PERSONAL HEALTH TRACKER</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+
+<body>
+    <!-- SVG Gooey Filter definitions for the Voice Visualizer -->
+    <svg width="0" height="0" style="position:absolute;">
+        <defs>
+            <filter id="goo">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="
+                    1 0 0 0 0  
+                    0 1 0 0 0  
+                    0 0 1 0 0  
+                    0 0 0 18 -7" result="goo" />
+                <feBlend in="SourceGraphic" in2="goo" />
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- Overlay for audio permission -->
+    <!-- Overlay for audio permission & start -->
+    <div id="start-overlay">
+        <!-- Retinal Scan Container (Hidden initially) -->
+        <div id="retinal-container" style="display: none; position: relative;">
+            <video id="webcam-feed" autoplay playsinline muted></video>
+
+            <!-- Eye Targeting Web -->
+            <div class="eye-tracking-web">
+                <div class="eye-target left-eye">
+                    <div class="crosshair"></div>
+                    <div class="tracking-circle"></div>
+                    <div class="data-link"></div>
+                </div>
+                <div class="eye-target right-eye">
+                    <div class="crosshair"></div>
+                    <div class="tracking-circle"></div>
+                    <div class="data-link"></div>
+                </div>
+                <div class="center-bridge"></div>
+            </div>
+
+            <div class="retinal-scanline"></div>
+            <div class="retinal-brackets top-left"></div>
+            <div class="retinal-brackets top-right"></div>
+            <div class="retinal-brackets bottom-left"></div>
+            <div class="retinal-brackets bottom-right"></div>
+            <div id="scan-text">AWAITING BIOMETRIC LOCK...</div>
+        </div>
+
+        <div id="start-content" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="medical-warning">PATIENT BIOMETRICS SECURED.</div>
+            <div class="start-btn" id="start-btn">ENGAGE S.O.N.A. DIAGNOSTICS</div>
+        </div>
+
+        <div id="debug-errors"
+            style="color:red; font-size:20px; text-align:center; position:absolute; bottom:20px; width:100%; white-space:pre-wrap;">
+        </div>
+    </div>
+    <script>
+        window.addEventListener('error', function (e) {
+            document.getElementById('debug-errors').innerText += "\nERROR: " + e.message + " at " + e.filename + ":" + e.lineno;
+        });
+    </script>
+
+    <!-- Neural Brain Canvas -->
+    <canvas id="neural-canvas"></canvas>
+
+    <!-- 3D Hologram Background -->
+    <div id="webgl-container"></div>
+
+    <!-- Medical HUD Layer -->
+    <div class="hud-overlay">
+
+        <!-- Top Left: Patient Identity & Device Sync -->
+        <div class="hud-box hud-top-left interactive-module" id="mod-identity">
+            <div class="hud-title">PATIENT IDENTITY</div>
+            <div class="profile-container">
+                <img src="patient.jpg" alt="Patient Avatar" class="patient-avatar">
+                <div class="profile-meta">
+                    <div class="hud-data name-display" id="patient-name-display">AWAITING INPUT...</div>
+                    <div class="meta-stat">AGE: <span class="blink-cyan">23</span></div>
+                    <div class="meta-stat">BLOOD: <span class="blink-cyan scramble-text">A+</span></div>
+                    <div class="meta-stat">GENETIC: <span class="blink-cyan scramble-text">ALPHA-9</span></div>
+                </div>
+            </div>
+            <a href="analytics.html" class="hw-sync blink-cyan">APPLE WATCH // SECURE LINK</a>
+        </div>
+
+        <!-- Top Right: Advanced Biometrics -->
+        <div class="hud-box hud-top-right interactive-module" id="mod-vitals">
+            <div class="hud-title">CARDIOVASCULAR ARRAY</div>
+            <div class="vital-row">
+                <span class="vital-label">BPM</span>
+                <span class="vital-value" id="bpm-val">72</span>
+            </div>
+            <div class="vital-row">
+                <span class="vital-label">SpO2</span>
+                <span class="vital-value" id="o2-val">99%</span>
+            </div>
+            <div class="vital-row">
+                <span class="vital-label">BP (SYS/DIA)</span>
+                <span class="vital-value" id="bp-val">118/76</span>
+            </div>
+            <div class="vital-row">
+                <span class="vital-label">HRV (ms)</span>
+                <span class="vital-value" id="hrv-val">45</span>
+            </div>
+
+            <div class="hud-title metabolic-title">METABOLIC PANEL</div>
+            <div class="vital-row">
+                <span class="vital-label">GLUCOSE</span>
+                <span class="vital-value" id="glucose-val">95 mg/dL</span>
+            </div>
+            <div class="vital-row">
+                <span class="vital-label">INSULIN SENS.</span>
+                <span class="vital-value" id="insulin-val">OPTIMAL</span>
+            </div>
+
+            <!-- EKG Simulation Canvas -->
+            <canvas id="ekg-canvas" width="280" height="60"></canvas>
+        </div>
+
+        <!-- Center Reticle / Subject Alignment -->
+        <div class="center-reticle">
+            <div class="crosshair crosshair-t"></div>
+            <div class="crosshair crosshair-b"></div>
+            <div class="crosshair crosshair-l"></div>
+            <div class="crosshair crosshair-r"></div>
+            <div class="scan-line"></div>
+        </div>
+
+        <!-- Bottom Left: Siri / ChatGPT Voice Interaction -->
+        <div class="hud-bottom-left interactive-module" id="mod-voice">
+            <div class="voice-interface">
+                <div class="voice-status" id="voice-indicator">S.O.N.A is Listening...</div>
+                <!-- Sona Voice Visualizer -->
+                <div id="sona-orb-container" class="sona-orb-container">
+                    <div class="sona-orb" id="sona-orb">
+                        <div class="orb-node node-1"></div>
+                        <div class="orb-node node-2"></div>
+                        <div class="orb-node node-3"></div>
+                        <div class="orb-node node-4"></div>
+                        <div class="orb-node node-center">
+                            <div class="core"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="transcript-box" id="transcript-box">
+                    [SYSTEM] Awaiting voice query. Click microphone to speak.
+                </div>
+
+                <div class="manual-chat-box">
+                    <input type="text" id="manual-chat-input" placeholder="OR TYPE QUERY HERE..." autocomplete="off">
+                    <div class="mic-btn-container">
+                        <button id="mic-btn" class="mic-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                            </svg>
+                        </button>
+                        <div class="mic-pulse" id="mic-pulse"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="morph-controls" style="margin-top: 50px; display: flex; gap: 10px;">
+                <button class="start-btn" id="btn-morph-heart"
+                    style="font-size: 0.9rem; padding: 10px; width: 100%;">HEART MATRIX</button>
+                <button class="start-btn" id="btn-morph-brain"
+                    style="font-size: 0.9rem; padding: 10px; width: 100%;">BRAIN MATRIX</button>
+                <button class="start-btn" id="btn-morph-dna"
+                    style="font-size: 0.9rem; padding: 10px; width: 100%;">NEURAL
+                    MATRIX</button>
+            </div>
+        </div>
+
+        <!-- Bottom Right: Sona Hardware Data Stream -->
+        <div class="hud-box hud-bottom-right interactive-module" id="mod-diagnosis">
+            <div class="hud-title">HARDWARE DATA STREAM</div>
+            <div class="console-log" id="console-log">
+                <!-- Data stream generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Body Systemic Diagnostics Pop-up -->
+    <div id="diagnostics-popup" class="hidden-popup">
+        <div class="popup-title">FULL SYSTEMIC SCAN — APPLE WATCH NEURAL LINK</div>
+        <div class="popup-content">
+            <div class="scan-grid">
+                <div class="scan-item">NEURAL ACTIVITY: <span style="color:var(--primary)"
+                        id="diag-neural">SCANNING...</span></div>
+                <div class="scan-item">METABOLIC RATE: <span style="color:var(--primary)"
+                        id="diag-metabolic">SCANNING...</span></div>
+                <div class="scan-item">CARDIOVASCULAR: <span style="color:var(--primary)"
+                        id="diag-cardio">SCANNING...</span></div>
+                <div class="scan-item">SLEEP DEBT INDEX: <span style="color:var(--primary)"
+                        id="diag-sleep">SCANNING...</span></div>
+                <div class="scan-item">BLOOD O2 SAT: <span style="color:var(--primary)" id="diag-o2">SCANNING...</span>
+                </div>
+                <div class="scan-item">SYSTEM STATUS: <span style="color:var(--alert)" id="anomaly-res">PENDING</span>
+                </div>
+            </div>
+            <div class="scan-message" id="popup-message">Establishing full-spectrum biometric handshake...</div>
+        </div>
+        <div class="start-btn" id="popup-close" style="font-size: 1rem; padding: 10px 20px; margin-top: 20px;">
+            ACKNOWLEDGE</div>
+    </div>
+
+    <!-- Patient Identity Pop-up -->
+    <div id="identity-popup" class="hidden-popup">
+        <div class="popup-title identity-title">PATIENT DOSSIER — CLASSIFIED</div>
+        <div class="popup-content">
+            <div class="identity-header">
+                <img src="patient.jpg" alt="Patient" class="identity-avatar">
+                <div class="identity-name-block">
+                    <div class="identity-name" id="identity-name">LOADING...</div>
+                    <div class="identity-role" id="identity-role">SYSTEM ARCHITECT & PRIMARY OPERATOR</div>
+                </div>
+            </div>
+            <div class="scan-grid identity-grid">
+                <div class="scan-item">CLEARANCE LEVEL: <span style="color:#ffd700" id="id-clearance">OMEGA-PRIME</span>
+                </div>
+                <div class="scan-item">NEURAL LINK STATUS: <span style="color:#ffd700" id="id-link">ACTIVE —
+                        BONDED</span></div>
+                <div class="scan-item">BIOMETRIC HASH: <span style="color:var(--primary)"
+                        id="id-hash">GENERATING...</span></div>
+                <div class="scan-item">AGE: <span style="color:var(--primary)" id="id-age">23</span></div>
+                <div class="scan-item">BLOOD TYPE: <span style="color:var(--primary)" id="id-blood">A+</span></div>
+                <div class="scan-item">GENETIC MARKER: <span style="color:var(--primary)" id="id-genetic">ALPHA-9</span>
+                </div>
+            </div>
+            <div class="scan-message identity-message" id="identity-message">Awaiting S.O.N.A. verification...</div>
+        </div>
+        <div class="start-btn" id="identity-close" style="font-size: 1rem; padding: 10px 20px; margin-top: 20px;">
+            DISMISS</div>
+    </div>
+
+    <!-- Dedicated Heart Diagnostics Pop-up -->
+    <div id="heart-popup" class="hidden-popup">
+        <div class="popup-title">LIVE HEART TELEMETRY</div>
+        <div class="popup-content">
+            <div class="scan-grid">
+                <div class="scan-item">RESTING BPM: <span style="color:var(--primary)" id="heart-bpm">SYNCING...</span>
+                </div>
+                <div class="scan-item">VENTRICULAR RHYTHM: <span style="color:var(--primary)"
+                        id="heart-rhythm">SYNCING...</span></div>
+                <div class="scan-item">ARTERIAL PLAQUE: <span style="color:var(--primary)"
+                        id="heart-plaque">SYNCING...</span></div>
+                <div class="scan-item">BLOOD FLOW VELOCITY: <span style="color:var(--primary)"
+                        id="heart-velocity">SYNCING...</span></div>
+            </div>
+            <div class="scan-message" id="heart-message">Establishing Secure Apple Watch Neural Link...</div>
+        </div>
+    </div>
+
+    <!-- Weekly Health Report Pop-up -->
+    <div id="weekly-popup" class="hidden-popup">
+        <div class="popup-title weekly-title">7-DAY HEALTH INTELLIGENCE REPORT</div>
+        <div class="popup-content">
+            <div class="weekly-grid" id="weekly-grid">
+                <div class="weekly-header">
+                    <span class="wk-col wk-day">DAY</span>
+                    <span class="wk-col">SLEEP</span>
+                    <span class="wk-col">HRV</span>
+                    <span class="wk-col">BPM</span>
+                    <span class="wk-col">GLUCOSE</span>
+                    <span class="wk-col">O2</span>
+                </div>
+                <!-- JS populates 7 rows here -->
+            </div>
+            <div class="weekly-summary-row">
+                <span>WEEKLY STATUS:</span>
+                <span id="weekly-status" style="color:#00e5ff;">COMPILING...</span>
+            </div>
+        </div>
+        <div class="start-btn" id="weekly-close" style="font-size: 1rem; padding: 10px 20px; margin-top: 20px;">
+            DISMISS</div>
+    </div>
+
+    <!-- S.O.N.A Application Logic -->
+    <script src="particles.js"></script>
+    <script src="heart_particles.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
